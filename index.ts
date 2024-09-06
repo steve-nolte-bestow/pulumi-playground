@@ -2,6 +2,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as k8s from "@pulumi/kubernetes";
 import * as postgres from "@pulumi/postgresql";
 
+// Minikube does not implement services of type `LoadBalancer`; require the user to specify if we're
+// running on minikube, and if so, create only services of type ClusterIP.
+const config = new pulumi.Config();
+const isMinikube = config.requireBoolean("isMinikube");
+
 // Define the PostgreSQL deployment
 const postgresDeployment = new k8s.apps.v1.Deployment("postgres-deployment", {
     spec: {
@@ -65,13 +70,19 @@ const apiDeployment = new k8s.apps.v1.Deployment("api-deployment", {
 
 // Define the REST API service
 const apiService = new k8s.core.v1.Service("api-service", {
+    metadata: {
+        name: "api-service" // user-specified name
+    },
     spec: {
         selector: { app: "api" },
         ports: [{ port: 3000, targetPort: 3000 }],
-        type: "LoadBalancer",
+        type: isMinikube ? "ClusterIP" : "LoadBalancer"
     },
 });
 
 // Export the API service URL
-export const apiUrl = apiService.status.loadBalancer.ingress[0].ip;
-
+export const ip = isMinikube
+    ? apiService.spec.clusterIP
+    : apiService.status.loadBalancer.apply(
+          (lb) => lb.ingress[0].ip || lb.ingress[0].hostname
+      );

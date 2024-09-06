@@ -1,1 +1,3 @@
 encryptionsalt: v1:ufXMkeSWZW8=:v1:uvD0BS7zrTZwlMdj:njl17njjmRFdCWotH/hl3NeFzdLKww==
+config:
+  kubernetes-typescript:isMinikube: "true"
